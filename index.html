@@ -562,7 +562,7 @@ else if(file.name.toLowerCase().endsWith(".kml")){
                             "";
 
                         var color = getColor(nameValue);
-                        var isConserve = /^อก\./.test(normalizeName(nameValue));
+                        var isConserve = /^อก\.-/.test(normalizeName(nameValue));
 
                         return {
                             color:"#000000",
@@ -614,7 +614,7 @@ else if(file.name.toLowerCase().endsWith(".kmz")){
                             "";
 
                         var color = getColor(nameValue);
-                        var isConserve = /^อก\./.test(normalizeName(nameValue));
+                        var isConserve = /^อก\.-/.test(normalizeName(nameValue));
 
                         return {
                             color:"#000000",
@@ -956,7 +956,7 @@ fetch("./PLLU_SATINGPHRA.kmz")
                             "";
 
                         var color = getColor(nameValue);
-                        var isConserve = /^อก\./.test(normalizeName(nameValue));
+                        var isConserve = /^อก\.-/.test(normalizeName(nameValue));
 
                         return {
                             color:"#000000",
