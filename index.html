@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ระบบแผนที่ภูมิสารสนเทศ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
+
+<style>
+html, body {
+    margin:0;
+    padding:0;
+    font-family: 'Sarabun', sans-serif;
+}
+section {
+    height:100vh;
+}
+
+.menu-title{
+    font-size:12px;      /* ปรับเล็กลง */
+    font-weight:600;     /* หนาพอประมาณ */
+    margin-bottom:4px;
+}
+
+#opacityValue{
+    font-size:11px;     /* ลดขนาด */
+    font-weight:500;
+    margin-left:4px;
+    color:#555;
+}
+
+#iframeSection iframe {
+    width:100%;
+    height:100%;
+    border:none;
+}
+#leafletSection {
+    position:relative;
+}
+#map {
+    height:100%;
+    width:100%;
+}
+.control-wrapper {
+    position:absolute;
+    top:20px;
+    left:20px;
+    z-index:1000;
+    max-height:70vh;      /* กันล้นลงล่าง */
+    overflow:auto;        /* เลื่อน scroll ได้ */
+}
+.toggle-btn {
+    background:#2c3e50;
+    color:white;
+    padding:6px 10px;
+    cursor:pointer;
+    border-radius:6px;
+    font-weight:bold;
+    font-size:13px;
+}
+.control-box {
+    margin-top:6px;
+    width:220px;
+    background:white;
+    padding:10px;
+    border-radius:10px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.3);
+    display:none;
+}
+input, select, button {
+    width:100%;
+    padding:2px;
+    margin:2px 0;
+    font-size:9px;
+}
+/* ===== ลบกรอบดำตอนคลิก polygon / line / marker ===== */
+
+.leaflet-interactive:focus {
+    outline: none !important;
+}
+
+.leaflet-container a:focus {
+    outline: none !important;
+}
+
+.leaflet-marker-icon:focus {
+    outline: none !important;
+}
+
+.opacity-control{
+    display: flex;
+    align-items: center;
+    gap: 8px;   /* ระยะห่างระหว่าง label, slider, % */
+}
+
+/* บางเบราว์เซอร์ใช้ stroke แทน outline */
+.leaflet-interactive:focus-visible {
+    outline: none !important;
+}
+path.leaflet-interactive:focus {
+    outline: none !important;
+    stroke-dasharray: none !important;
+}
+.custom-tooltip {
+    position: absolute;
+    background: #222;
+    color: white;
+    padding: 5px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 2000;
+}
+.leaflet-bottom.leaflet-left {
+    left: 20px !important;
+    bottom: 20px !important;
+}
+
+.leaflet-control {
+    margin: 0 !important;
+}
+
+/* ===== หน้าเปิดระบบ ===== */
+
+#introSection{
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#2c3e50;
+    color:white;
+    font-size:60px;
+    font-weight:bold;
+    text-align:center;
+    letter-spacing:2px;
+}
+</style>
+</head>
+
+<body>
+
+    <section id="introSection">
+บริการตรวจสอบการใช้ประโยชน์ที่ดิน
+</section>
+    
+<section id="iframeSection">
+    <iframe src="https://landsmaps.dol.go.th/"></iframe>
+</section>
+
+<section id="leafletSection">
+
+<div class="control-wrapper">
+    <div class="toggle-btn" onclick="toggleMenu()">☰ เมนูเครื่องมือ</div>
+
+    <div class="control-box" id="menuBox">
+
+        <div class="menu-title">ค้นหาพิกัด</div>
+        <input type="text" id="coordInput"
+        placeholder="Lat,Lng หรือ UTM 47N เช่น 794400,656295">
+        <button onclick="goToLocation()">แสดงพิกัดบนแผนที่</button>
+
+        <hr>
+
+        <div class="menu-title">Basemap</div>
+        <button onclick="toggleBasemap()" id="basemapBtn">
+    ภาพถ่ายดาวเทียม
+</button>
+
+        <hr>
+
+        <div class="menu-title">นำเข้าไฟล์</div>
+        <input type="file" id="fileUpload" accept=".kml,.kmz,.png,.jpg,.jpeg">
+
+<div class="menu-title">พิกัดภาพ PNG</div>
+
+<input type="text" id="pngSW"
+placeholder="มุมล่างซ้าย (Lat,Lng) เช่น 7.00,100.45">
+
+<input type="text" id="pngNE"
+placeholder="มุมบนขวา (Lat,Lng) เช่น 7.15,100.60">
+<button onclick="updateImageBounds()">ปรับตำแหน่งภาพ</button>
+
+
+        <div class="menu-title">Refresh</div>
+<button onclick="refreshAllLayers()">🔄 แสดงข้อมูลทั้งหมด</button>
+<hr>
+        <hr>
+
+<div class="menu-title">ปรับความโปร่งใส Layer</div>
+
+<div class="opacity-control">
+    <input type="range" id="opacitySlider"
+           min="0" max="100" step="5" value="50">
+    <span id="opacityValue">50%</span>
+</div>
+               
+    </div>
+</div>
+
+<div id="map"></div>
+</section>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/proj4/dist/proj4.js"></script>
+<script src="https://unpkg.com/@tmcw/togeojson@latest/dist/togeojson.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+
+var map = L.map('map',{
+    zoomControl:false,
+    doubleClickZoom:false
+}).setView([7.0084,100.4747],13);
+
+L.control.zoom({ position:'topright' }).addTo(map);
+
+var osm = L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { attribution:'© OpenStreetMap contributors'}
+).addTo(map);
+
+var satellite = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution:'Tiles © Esri'}
+);
+
+var currentBasemap = "osm";
+
+function toggleBasemap(){
+
+    var btn = document.getElementById("basemapBtn");
+
+    if(currentBasemap === "osm"){
+
+        map.removeLayer(osm);
+        map.addLayer(satellite);
+
+        btn.innerHTML = "OpenStreetMap";
+        currentBasemap = "sat";
+
+    } else {
+
+        map.removeLayer(satellite);
+        map.addLayer(osm);
+
+        btn.innerHTML = "ภาพถ่ายดาวเทียม";
+        currentBasemap = "osm";
+
+    }
+}
+
+var importedLayers = {};
+var currentImageOverlay = null;
+var layerControl = L.control.layers(null, importedLayers,{
+    position:'topright'
+}).addTo(map);
+
+var imageBoundsConfig = {
+
+"จังหวัดสงขลา.jpg": [
+[5.698999, 99.643914],   // ล่างซ้าย
+[8.369027, 101.529674]   // บนขวา
+],
+
+"เศรษฐกิจพิเศษ.jpg": [
+[6.12601478, 100.13007694],
+[6.93295612, 100.66875348]
+],
+
+"ระโนด.jpg": [
+ [7.65168830,100.24699363], // ล่างซ้าย
+    [7.94686453,100.46640881]  // บนขวา
+],
+
+"พะตงพังลา.jpg": [
+ [6.75162129, 100.42047177], // ล่างซ้าย
+    [6.90572264, 100.53005581]  // บนขวา
+],
+
+"ผังกำแพงเพชร-นาสีทอง.jpg": [
+ [6.98696461, 100.15381363], // ล่างซ้าย
+  [7.28501762, 100.38152648]  // บนขวา
+],
+
+"บ้านประกอบ.jpg": [
+ [6.36684671, 100.56584534], // ล่างซ้าย
+  [6.67158155, 100.78467669]  // บนขวา
+]
+
+};
+
+
+
+function normalizeName(text){
+    return text
+        ?.trim()
+        .replace(/\s+/g,'')
+        .replace(/–|—/g,'-');
+}
+
+const colorConfig = [
+
+// 1️⃣ ที่อยู่อาศัยหนาแน่นน้อย
+{ label: "ย.1-1 ถึง ย.1-17", pattern: /^ย\.1-([1-9]|1[0-7])$/, color: "#FFFF00" }, // ที่ดินประเภทที่อยู่อาศัยหนาแน่นน้อย
+{ label: "ย.2-1 ถึง ย.2-19", pattern: /^ย\.2-([1-9]|1[0-9])$/, color: "#FFFF00" }, // ที่ดินประเภทที่อยู่อาศัยหนาแน่นน้อย
+
+// 2️⃣ ที่อยู่อาศัยหนาแน่นปานกลาง
+{ label: "ย.3-1 ถึง ย.3-4", pattern: /^ย\.3-[1-4]$/, color: "#FF7F00" }, // ที่ดินประเภทที่อยู่อาศัยหนาแน่นปานกลาง
+
+// 3️⃣ พาณิชยกรรมและที่อยู่อาศัยหนาแน่นมาก
+{ label: "พ.-1 ถึง พ.-3", pattern: /^พ\.-[1-3]$/, color: "#FF0033" }, // ที่ดินประเภทพาณิชยกรรมและที่อยู่อาศัยหนาแน่นมาก
+
+// 4️⃣ ชนบทและเกษตรกรรม
+{ label: "ก.1-1 ถึง ก.1-49", pattern: /^ก\.1-([1-9]|[1-5][0-9])$/, color: "#38A800" }, // ที่ดินประเภทชนบทและเกษตรกรรม
+{ label: "ก.2-1 ถึง ก.2-16", pattern: /^ก\.2-([1-9]|1[0-6])$/, color: "#38A800" }, // ที่ดินประเภทชนบทและเกษตรกรรม
+{ label: "ก.3-1 ถึง ก.3-14", pattern: /^ก\.3-([1-9]|1[0-4])$/, color: "#38A800" }, // ที่ดินประเภทชนบทและเกษตรกรรม
+
+// 4️⃣ อนุรักษ์ชนบทและเกษตรกรรม
+{ label: "อก.-1 ถึง อก.-4", pattern: /^อก\.-[1-4]$/, color: "#38A800" }, // ที่ดินประเภทชนบทและเกษตรกรรม
+
+// 6️⃣ ที่โล่งเพื่อนันทนาการและการรักษาคุณภาพสิ่งแวดล้อม
+{ label: "ล.-1 ถึง ล.-3", pattern: /^ล\.-[1-3]$/, color: "#BFFF00" }, // ที่ดินประเภทที่โล่งเพื่อนันทนาการและการรักษาคุณภาพสิ่งแวดล้อม
+
+// 7️⃣ สถาบันการศึกษา
+{ label: "ศษ.-1 ถึง ศษ.-38", pattern: /^ศษ\.-([1-9]|[12][0-9]|3[0-8])$/, color: "#394C00" }, // ที่ดินประเภทสถาบันการศึกษา
+
+// 8️⃣ ที่โล่งเพื่อการรักษาคุณภาพสิ่งแวดล้อม
+{ label: "ลส.-1 ถึง ลส.-2", pattern: /^ลส\.-[12]$/, color: "#7FFFFF" }, // ที่ดินประเภทที่โล่งเพื่อการรักษาคุณภาพสิ่งแวดล้อม
+
+// 9️⃣ อนุรักษ์ศิลปวัฒนธรรม
+{ label: "อศ.-1 ถึง อศ.-8", pattern: /^อศ\.-[1-8]$/, color: "#FFBF7F" }, // ที่ดินประเภทอนุรักษ์เพื่อส่งเสริมเอกลักษณ์ศิลปวัฒนธรรมไทย
+
+// 🔟 สถาบันศาสนา
+{ label: "ศน.-1 ถึง ศน.-9", pattern: /^ศน\.-[1-9]$/, color: "#9C9C9C" }, // ที่ดินประเภทสถาบันศาสนา
+
+// 1️⃣1️⃣ สถาบันราชการ สาธารณูปโภค และสาธารณูปการ
+{ label: "ส.-1 ถึง ส.-31", pattern: /^ส\.-([1-9]|[12][0-9]|3[01])$/, color: "#005CE6" } // ที่ดินประเภทสถาบันราชการ สาธารณูปโภค และสาธารณูปการ
+
+];
+
+function getColor(nameValue){
+
+    if(!nameValue) return "#999999";
+
+    nameValue = normalizeName(nameValue);
+
+    for(let rule of colorConfig){
+        if(rule.pattern.test(nameValue)){
+            return rule.color;
+        }
+    }
+
+    return "#999999";
+}
+
+// ===== LEGEND =====
+// ===== CUSTOM LEGEND =====
+var legend = L.control({ position: "bottomleft" });
+
+legend.onAdd = function(map){
+
+    var div = L.DomUtil.create("div");
+
+    div.style.fontFamily = "'Sarabun', sans-serif";
+    div.style.fontSize = "11px";
+    div.style.background = "white";
+    div.style.padding = "8px";
+    div.style.borderRadius = "10px";
+    div.style.boxShadow = "0 0 12px rgba(0,0,0,0.3)";
+    div.style.fontSize = "13px";
+    div.style.lineHeight = "1.4";
+    div.style.maxWidth = "260px";
+
+    div.innerHTML = "<b>คำอธิบายสัญลักษณ์</b><br>";
+
+    var items = [
+
+    { no:1,  zone:"เขตสีเหลือง", color:"#FFFF00",
+      abbr:"ย.1 - ย.2",
+      desc:"ที่ดินประเภทที่อยู่อาศัยหนาแน่นน้อย" },
+
+    { no:2,  zone:"เขตสีส้ม", color:"#FF7F00",
+      abbr:"ย.3",
+      desc:"ที่ดินประเภทที่อยู่อาศัยหนาแน่นปานกลาง" },
+
+    { no:3,  zone:"เขตสีแดง", color:"#FF0033",
+      abbr:"พ.",
+      desc:"ที่ดินประเภทพาณิชยกรรมและที่อยู่อาศัยหนาแน่นมาก" },
+
+    { no:4,  zone:"เขตสีเขียว", color:"#38A800",
+      abbr:"ก.1 - ก.3",
+      desc:"ที่ดินประเภทชนบทและเกษตรกรรม" },
+
+    { no:5,  zone:"เขตสีขาวมีกรอบและเส้นทแยงสีเขียว", color:"#38A800",
+      border:"#000000", diagonal:true,
+      abbr:"อก.",
+      desc:"ที่ดินประเภทอนุรักษ์ชนบทและเกษตรกรรม" },
+
+    { no:6,  zone:"เขตสีเขียวอ่อน", color:"#BFFF00",
+      abbr:"ล.",
+      desc:"ที่ดินประเภทที่โล่งเพื่อนันทนาการและการรักษาคุณภาพสิ่งแวดล้อม" },
+
+    { no:7,  zone:"เขตสีเขียวมะกอก", color:"#394C00",
+      abbr:"ศษ.",
+      desc:"ที่ดินประเภทสถาบันการศึกษา" },
+
+    { no:8,  zone:"เขตสีฟ้า", color:"#7FFFFF",
+      abbr:"ลส.",
+      desc:"ที่ดินประเภทที่โล่งเพื่อการรักษาคุณภาพสิ่งแวดล้อม" },
+
+    { no:9,  zone:"เขตสีน้ำตาลอ่อน", color:"#FFBF7F",
+      abbr:"อศ.",
+      desc:"ที่ดินประเภทอนุรักษ์เพื่อส่งเสริมเอกลักษณ์ศิลปวัฒนธรรมไทย" },
+
+    { no:10, zone:"เขตสีเทาอ่อน", color:"#9C9C9C",
+      abbr:"ศน.",
+      desc:"ที่ดินประเภทสถาบันศาสนา" },
+
+    { no:11, zone:"เขตสีน้ำเงิน", color:"#005CE6",
+      abbr:"ส.",
+      desc:"ที่ดินประเภทสถาบันราชการ สาธารณูปโภค และสาธารณูปการ" }
+];
+
+    items.forEach(function(item){
+
+        var boxStyle =
+    "width:45px;height:16px;display:inline-flex;" +
+    "align-items:center;justify-content:center;" +
+    "margin:0 6px;font-size:9px;font-weight:bold;" +
+    "color:#000;" +
+    "background:" + item.color + ";" +
+    "border:1px solid #000;";
+
+        // กรณีพิเศษข้อ 5 มีเส้นทแยง
+        if(item.diagonal){
+            boxStyle +=
+                "background-image: repeating-linear-gradient(-45deg, #38A800 0px, green 5px, white 5px, white 16px);";
+        }
+
+        div.innerHTML +=
+    "<div style='display:flex; align-items:flex-start; margin-bottom:6px;'>" +
+
+        // เลขลำดับ
+        "<div style='width:15px;'>" +
+            item.no + "." +
+        "</div>" +
+
+        // กล่องสี
+        "<div style='margin-right:8px;'>" +
+            "<span class='legend-box' data-zone='" + item.zone + "' style='" + boxStyle + "'>" 
+            + item.abbr + 
+            "</span>" +
+        "</div>" +
+
+        
+        // ข้อความคำอธิบาย
+        "<div class='legend-text' data-abbr='" + item.abbr + "' style='flex:1; cursor:pointer;'>" +
+    item.desc +
+"</div>" +
+
+    "</div>";
+    });
+
+    return div;
+};
+
+var activeFilterColor = null;
+
+legend.addTo(map);
+
+
+function goToLocation(){
+    var input = document.getElementById("coordInput").value.trim();
+    var parts = input.replace(/\s+/g,'').split(',');
+
+    if(parts.length !== 2) return alert("รูปแบบไม่ถูกต้อง");
+
+    var a = parseFloat(parts[0]);
+    var b = parseFloat(parts[1]);
+
+    if(isNaN(a) || isNaN(b)) return alert("พิกัดไม่ถูกต้อง");
+
+    if(a <= 90 && b <= 180){
+        map.setView([a,b],16);
+        L.marker([a,b]).addTo(map);
+    } else {
+        proj4.defs("EPSG:32647",
+            "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
+
+        var converted = proj4("EPSG:32647","WGS84",[a,b]);
+        map.setView([converted[1],converted[0]],16);
+        L.marker([converted[1],converted[0]]).addTo(map);
+    }
+}
+
+function toggleMenu(){
+    var box = document.getElementById("menuBox");
+    box.style.display =
+        (box.style.display === "block") ? "none" : "block";
+}
+// ===== Load KML / KMZ ===== 
+document.getElementById("fileUpload").addEventListener("change", function(e){
+
+var file = e.target.files[0];
+if(!file) return;
+
+var reader = new FileReader();
+
+// ===== PNG =====
+if(file.name.toLowerCase().match(/\.(png|jpg|jpeg)$/)){
+
+    var bounds = imageBoundsConfig[file.name];
+
+if(!bounds){
+alert("ไม่พบพิกัดของภาพนี้");
+return;
+}
+
+    reader.onload = function(e){
+
+        var imgUrl = URL.createObjectURL(file);
+
+        currentImageOverlay = L.imageOverlay(imgUrl, bounds,{
+    opacity:0.7,
+    interactive:false
+}).addTo(map);
+
+        map.fitBounds(bounds);
+
+        importedLayers[file.name] = currentImageOverlay;
+layerControl.addOverlay(currentImageOverlay, file.name);
+    };
+
+    reader.readAsDataURL(file);
+}
+
+// ===== KML =====
+else if(file.name.toLowerCase().endsWith(".kml")){
+
+
+    reader.onload = function(event){
+
+        var parser = new DOMParser();
+        var kml = parser.parseFromString(event.target.result, "text/xml");
+        var geojson = toGeoJSON.kml(kml);
+
+        var layer = L.geoJSON(geojson,{
+    style: function(feature){
+
+                        var nameValue =
+                            feature.properties?.name ||
+                            feature.properties?.NAME ||
+                            feature.properties?.Zone ||
+                            feature.properties?.ZONE ||
+                            feature.properties?.Type ||
+                            feature.properties?.TYPE ||
+                            "";
+
+                        var color = getColor(nameValue);
+                        var isConserve = /^อก\./.test(normalizeName(nameValue));
+
+                        return {
+                            color:"#000000",
+                            weight:1,
+                            fillColor: isConserve ? "#38A800" : color,
+                            fillOpacity: isConserve ? 1 : 0.5
+                        };
+                    },
+                    onEachFeature: onEachFeature
+                }).addTo(map);
+
+        if(layer.getBounds().isValid()){
+            map.fitBounds(layer.getBounds());
+        }
+layerControl.addOverlay(layer, file.name);
+importedLayers[file.name] = layer;
+    };
+
+    reader.readAsText(file);
+}
+
+// ===== KMZ =====
+else if(file.name.toLowerCase().endsWith(".kmz")){
+
+    reader.onload = function(event){
+
+        JSZip.loadAsync(event.target.result).then(function(zip){
+
+            zip.forEach(function(path, entry){
+
+                if(path.endsWith(".kml")){
+
+                    entry.async("string").then(function(kmlText){
+
+                        var parser = new DOMParser();
+                        var kml = parser.parseFromString(kmlText, "text/xml");
+                        var geojson = toGeoJSON.kml(kml);
+
+                        var layer = L.geoJSON(geojson,{
+    style: function(feature){
+
+                        var nameValue =
+                            feature.properties?.name ||
+                            feature.properties?.NAME ||
+                            feature.properties?.Zone ||
+                            feature.properties?.ZONE ||
+                            feature.properties?.Type ||
+                            feature.properties?.TYPE ||
+                            "";
+
+                        var color = getColor(nameValue);
+                        var isConserve = /^อก\./.test(normalizeName(nameValue));
+
+                        return {
+                            color:"#000000",
+                            weight:1,
+                            fillColor: isConserve ? "#38A800" : color,
+                            fillOpacity: isConserve ? 1 : 0.5
+                        };
+                    },
+                    onEachFeature: onEachFeature
+                }).addTo(map);
+
+                        if(layer.getBounds().isValid()){
+                            map.fitBounds(layer.getBounds());
+                        }
+
+                        layerControl.addOverlay(layer, file.name);
+importedLayers[file.name] = layer;
+                    });
+
+                }
+
+            });
+
+        });
+
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+});
+function onEachFeature(feature, layer){
+
+if(!feature.properties) return;
+
+var nameValue =
+    feature.properties?.name ||
+    feature.properties?.NAME ||
+    "";
+
+if(!nameValue) return;
+
+var html = "<div style='font-size:14px; font-weight:bold;'>" 
+           + nameValue + 
+           "</div>";
+
+var tooltip = L.tooltip({
+    sticky: true,
+    direction: "top",
+    opacity: 0.9
+}).setContent(html);
+
+var timer;
+
+layer.on("mouseover", function(e){
+    timer = setTimeout(function(){
+        tooltip.setLatLng(e.latlng);
+        map.openTooltip(tooltip);
+    }, 400);   // หน่วง 0.4 วินาที
+});
+
+layer.on("mousemove", function(e){
+    tooltip.setLatLng(e.latlng);
+});
+
+layer.on("mouseout", function(){
+    clearTimeout(timer);
+    map.closeTooltip(tooltip);
+});
+}
+
+
+// ===== ปรับ Opacity Layer =====
+document.getElementById("opacitySlider")
+.addEventListener("input", function(){
+
+    var percent = parseInt(this.value);
+    var value = percent / 100;
+
+    document.getElementById("opacityValue").innerText = percent + "%";
+
+    for(var layerName in importedLayers){
+
+    var layerGroup = importedLayers[layerName];
+
+    if(layerGroup.eachLayer){
+
+        layerGroup.eachLayer(function(subLayer){
+
+            if(subLayer.setStyle){
+                subLayer.setStyle({
+                    fillOpacity:value,
+                    opacity:value
+                });
+            }
+
+            if(subLayer.setOpacity){
+                subLayer.setOpacity(value);
+            }
+
+        });
+
+    } else if(layerGroup.setOpacity){
+
+        layerGroup.setOpacity(value);
+
+    }
+
+}
+
+});
+// ===== Tooltip Delay 0.4s สำหรับ legend =====
+var tooltipDiv = document.createElement("div");
+tooltipDiv.className = "custom-tooltip";
+document.body.appendChild(tooltipDiv);
+
+var timer;
+
+document.addEventListener("mouseover", function(e){
+
+    if(e.target.classList.contains("legend-box")){
+
+        var text = e.target.getAttribute("data-zone");
+
+        timer = setTimeout(function(){
+            tooltipDiv.innerText = text;
+            tooltipDiv.style.left = (e.pageX + 10) + "px";
+            tooltipDiv.style.top = (e.pageY + 10) + "px";
+            tooltipDiv.style.opacity = 1;
+        }, 400); // ⬅️ 0.4 วินาที
+    }
+});
+
+document.addEventListener("mousemove", function(e){
+
+    if(e.target.classList.contains("legend-box")){
+        tooltipDiv.style.left = (e.pageX + 10) + "px";
+        tooltipDiv.style.top = (e.pageY + 10) + "px";
+    }
+});
+
+document.addEventListener("mouseout", function(e){
+
+    if(e.target.classList.contains("legend-box")){
+        clearTimeout(timer);
+        tooltipDiv.style.opacity = 0;
+    }
+});
+
+// ===== Filter Polygon ตาม Legend =====
+document.addEventListener("click", function(e){
+
+    if(e.target.classList.contains("legend-text")){
+
+        var selectedAbbr = e.target.getAttribute("data-abbr");
+
+        if(activeFilterColor === selectedAbbr){
+            activeFilterColor = null;
+            resetAllLayers();
+            return;
+        }
+
+        activeFilterColor = selectedAbbr;
+
+        for(var layerName in importedLayers){
+
+            var layerGroup = importedLayers[layerName];
+
+            if(layerGroup.eachLayer){
+
+layerGroup.eachLayer(function(layer){
+
+                if(layer.feature && layer.feature.properties){
+
+                    var nameValue =
+                        layer.feature.properties?.name ||
+                        layer.feature.properties?.NAME ||
+                        "";
+
+                    nameValue = normalizeName(nameValue);
+
+                    var show = false;
+
+                    if(selectedAbbr === "ย.1 - ย.2"){
+                        show = /^ย\.1|^ย\.2/.test(nameValue);
+                    }
+                    else if(selectedAbbr === "ย.3"){
+                        show = /^ย\.3/.test(nameValue);
+                    }
+                    else if(selectedAbbr === "พ."){
+                        show = /^พ\./.test(nameValue);
+                    }
+                    else if(selectedAbbr === "ก.1 - ก.3"){
+                        show = /^ก\./.test(nameValue);
+                    }
+                    else if(selectedAbbr === "อก."){
+                        show = /^อก\./.test(nameValue);
+                    }
+                    else if(selectedAbbr === "ล."){
+                        show = /^ล\./.test(nameValue);
+                    }
+                    else if(selectedAbbr === "ศษ."){
+                        show = /^ศษ\./.test(nameValue);
+                    }
+                    else if(selectedAbbr === "ลส."){
+                        show = /^ลส\./.test(nameValue);
+                    }
+                    else if(selectedAbbr === "อศ."){
+                        show = /^อศ\./.test(nameValue);
+                    }
+                    else if(selectedAbbr === "ศน."){
+                        show = /^ศน\./.test(nameValue);
+                    }
+                    else if(selectedAbbr === "ส."){
+                        show = /^ส\./.test(nameValue);
+                    }
+
+                    if(show){
+                        layer.setStyle({
+                            fillOpacity: 0.5,
+                            opacity: 1
+                        });
+                    } else {
+                        layer.setStyle({
+                            fillOpacity: 0,
+                            opacity: 0
+                        });
+                    }
+
+                }
+
+            });
+
+        }
+
+    }
+}
+});
+
+function resetAllLayers(){
+
+    for(var layerName in importedLayers){
+
+        var layerGroup = importedLayers[layerName];
+
+        if(layerGroup.eachLayer){
+
+            layerGroup.eachLayer(function(layer){
+
+                if(layer.setStyle){
+
+                    layer.setStyle({
+                        fillOpacity:0.5,
+                        opacity:1
+                    });
+
+                }
+
+            });
+
+        }
+
+    }
+
+}
+
+
+function refreshAllLayers(){
+
+    activeFilterColor = null;
+
+    for(var layerName in importedLayers){
+
+        var layerGroup = importedLayers[layerName];
+
+        layerGroup.eachLayer(function(layer){
+
+            if(layer.feature && layer.feature.properties){
+
+                var nameValue =
+                    layer.feature.properties?.name ||
+                    layer.feature.properties?.NAME ||
+                    layer.feature.properties?.Zone ||
+                    layer.feature.properties?.ZONE ||
+                    layer.feature.properties?.Type ||
+                    layer.feature.properties?.TYPE ||
+                    "";
+
+                var realColor = getColor(nameValue);
+
+                layer.setStyle({
+                    fillColor: realColor,
+                    fillOpacity: 0.5,
+                    opacity: 1
+                });
+
+            }
+
+        });
+
+    }
+
+}
+
+fetch("./PLLU_SATINGPHRA.kmz")
+.then(response => {
+    if(!response.ok){
+        throw new Error("โหลดไฟล์ไม่สำเร็จ: " + response.status);
+    }
+    return response.arrayBuffer();
+})
+.then(data => JSZip.loadAsync(data))
+.then(zip => {
+
+    let found = false;
+
+    zip.forEach((path, entry) => {
+
+        if(path.toLowerCase().endsWith(".kml")){
+
+            found = true;
+
+            entry.async("string").then(kmlText => {
+
+                var parser = new DOMParser();
+                var kml = parser.parseFromString(kmlText, "text/xml");
+                var geojson = toGeoJSON.kml(kml);
+
+                var layer = L.geoJSON(geojson,{
+                    style: function(feature){
+
+                        var nameValue =
+                            feature.properties?.name ||
+                            feature.properties?.NAME ||
+                            feature.properties?.Zone ||
+                            feature.properties?.ZONE ||
+                            feature.properties?.Type ||
+                            feature.properties?.TYPE ||
+                            "";
+
+                        var color = getColor(nameValue);
+                        var isConserve = /^อก\./.test(normalizeName(nameValue));
+
+                        return {
+                            color:"#000000",
+                            weight:1,
+                            fillColor: isConserve ? "#FFFFFF" : color,
+                            fillOpacity: isConserve ? 1 : 0.5
+                        };
+                    },
+                    onEachFeature: onEachFeature
+                });
+                importedLayers["PLLU_SATINGPHRA"] = layer;
+layerControl.addOverlay(layer, "PLLU_SATINGPHRA");
+
+                if(layer.getBounds().isValid()){
+                    map.fitBounds(layer.getBounds());
+                }
+
+            });
+
+        }
+
+    });
+
+    if(!found){
+        alert("ไม่พบไฟล์ KML ภายใน KMZ");
+    }
+
+})
+.catch(err => {
+    console.error(err);
+    alert("เกิดข้อผิดพลาดในการโหลด KMZ");
+});
+
+function updateImageBounds(){
+
+if(!currentImageOverlay){
+alert("ยังไม่มีภาพ");
+return;
+}
+
+var sw = document.getElementById("pngSW").value.replace(/\s+/g,'').split(",");
+var ne = document.getElementById("pngNE").value.replace(/\s+/g,'').split(",");
+
+if(sw.length!==2 || ne.length!==2){
+alert("พิกัดไม่ถูกต้อง");
+return;
+}
+
+var bounds = [
+[parseFloat(sw[0]), parseFloat(sw[1])],
+[parseFloat(ne[0]), parseFloat(ne[1])]
+];
+
+currentImageOverlay.setBounds(bounds);
+
+map.fitBounds(bounds);
+
+}
+
+map.on("click", function(e){
+
+    var lat = e.latlng.lat.toFixed(6);
+    var lng = e.latlng.lng.toFixed(6);
+
+    L.popup()
+        .setLatLng(e.latlng)
+        .setContent(lat + "," + lng)
+        .openOn(map);
+
+});
+
+// ===== โหลดภาพจาก GitHub อัตโนมัติ =====
+
+for (var fileName in imageBoundsConfig) {
+
+    var bounds = imageBoundsConfig[fileName];
+
+    var overlay = L.imageOverlay(
+    "images/" + fileName,
+    bounds,
+    {opacity:0.7}
+);
+
+    importedLayers[fileName] = overlay;
+    layerControl.addOverlay(overlay, fileName);
+
+}
+
+</script>
+</body>
+</html>
