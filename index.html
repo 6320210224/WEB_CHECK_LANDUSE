@@ -223,6 +223,12 @@ path.leaflet-interactive:focus {
     opacity: 0;
     transition: opacity 0.8s ease;
 }
+
+    @keyframes arrowMove {
+    0%   { transform: translateX(0) rotate(45deg); }
+    50%  { transform: translateX(-5px) rotate(45deg); } /* ไปทางซ้าย */
+    100% { transform: translateX(0) rotate(45deg); }
+}
 </style>
 </head>
 
@@ -280,6 +286,11 @@ placeholder="มุมบนขวา (Lat,Lng) เช่น 7.15,100.60">
 
 <div class="legend-toggle" onclick="toggleLegend()">คำอธิบายสัญลักษณ์</div>
 
+    <!-- ===== ลูกศรแนะนำ Layer ===== -->
+<div id="layerHint">
+    <div class="hint-text">กดเลือกชั้นข้อมูลตรงนี้</div>
+    <div class="arrow"></div>
+</div>
 <div id="map"></div>
 </section>
 
