@@ -171,6 +171,9 @@ path.leaflet-interactive:focus {
     overflow-y:auto;
 }
 
+    body {
+    visibility: hidden;
+}
 </style>
 </head>
 
@@ -1110,5 +1113,11 @@ function toggleLegend(){
     <section id="iframeSection">
     <iframe src="https://landsmaps.dol.go.th/"></iframe>
 </section>
+
+    <script>
+window.onload = function(){
+    document.body.style.visibility = "visible";
+}
+</script>
 </body>
 </html>
