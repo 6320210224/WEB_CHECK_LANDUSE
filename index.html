@@ -174,6 +174,55 @@ path.leaflet-interactive:focus {
     body {
     visibility: hidden;
 }
+
+    #layerHint {
+    position: absolute;
+    top: 80px;   /* ปรับตำแหน่งตามจริง */
+    right: 70px;  /* ชี้ไปที่ปุ่ม layer */
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    animation: fadePulse 2.5s infinite;
+}
+
+#layerHint .hint-text {
+    background: rgba(44,62,80,0.85);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+#layerHint .arrow {
+    width: 20px;
+    height: 20px;
+    border-right: 3px solid #2c3e50;
+    border-top: 3px solid #2c3e50;
+    transform: rotate(45deg);
+    animation: arrowMove 1.5s infinite;
+}
+
+/* เอฟเฟคกระพริบเนียน ๆ */
+@keyframes fadePulse {
+    0%   { opacity: 0.2; }
+    50%  { opacity: 1; }
+    100% { opacity: 0.2; }
+}
+
+/* ลูกศรขยับนิด ๆ */
+@keyframes arrowMove {
+    0%   { transform: translateX(0) rotate(45deg); }
+    50%  { transform: translateX(5px) rotate(45deg); }  /* เปลี่ยนเป็น + */
+    100% { transform: translateX(0) rotate(45deg); }
+}
+
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.8s ease;
+}
 </style>
 </head>
 
@@ -1118,6 +1167,19 @@ function toggleLegend(){
 window.onload = function(){
     document.body.style.visibility = "visible";
 }
+
+setTimeout(function(){
+    var hint = document.getElementById("layerHint");
+
+    if(hint){
+        hint.classList.add("fade-out");
+
+        setTimeout(function(){
+            hint.style.display = "none";
+        }, 800);
+    }
+
+}, 5000);
 </script>
 </body>
 </html>
