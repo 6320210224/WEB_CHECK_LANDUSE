@@ -179,7 +179,7 @@ path.leaflet-interactive:focus {
     position: absolute;
     top: 80px;   /* ปรับตำแหน่งตามจริง */
     right: 70px;  /* ชี้ไปที่ปุ่ม layer */
-    z-index: 500;
+    z-index: 1000;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -224,11 +224,7 @@ path.leaflet-interactive:focus {
     transition: opacity 0.8s ease;
 }
 
-    @keyframes arrowMove {
-    0%   { transform: translateX(0) rotate(45deg); }
-    50%  { transform: translateX(-5px) rotate(45deg); } /* ไปทางซ้าย */
-    100% { transform: translateX(0) rotate(45deg); }
-}
+  
 </style>
 </head>
 
@@ -288,7 +284,7 @@ placeholder="มุมบนขวา (Lat,Lng) เช่น 7.15,100.60">
 
     <!-- ===== ลูกศรแนะนำ Layer ===== -->
 <div id="layerHint">
-    <div class="hint-text">กดเลือกชั้นข้อมูลตรงนี้</div>
+    <div class="hint-text">เลือกแสดงข้อมูล</div>
     <div class="arrow"></div>
 </div>
 <div id="map"></div>
@@ -1187,7 +1183,7 @@ setTimeout(function(){
 
         setTimeout(function(){
             hint.style.display = "none";
-        }, 800);
+        }, 8000);
     }
 
 }, 5000);
